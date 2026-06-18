@@ -333,6 +333,15 @@ function beep(freq,gain,dur){
 }
 
 async function start(){
+  // pré-checagens antes de pedir o microfone
+  if(!window.isSecureContext){
+    els.msg.textContent='Esta página precisa estar em HTTPS. Abra pelo link https://… (não por arquivo local).';
+    els.msg.classList.add('err'); return;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    els.msg.textContent='Este navegador não libera o microfone. Abra no Chrome ou Safari (não no navegador interno de apps como WhatsApp/Instagram).';
+    els.msg.classList.add('err'); return;
+  }
   try{
     audioCtx=new (window.AudioContext||window.webkitAudioContext)();
     if(audioCtx.state==='suspended') await audioCtx.resume(); // iOS
@@ -350,8 +359,23 @@ async function start(){
     lastT=0; holdMs=0;
     loop();
   }catch(e){
-    els.msg.textContent='Não consegui acessar o microfone aqui. Abra o arquivo direto no navegador (Chrome/Safari) e permita o mic.';
+    let m;
+    switch(e.name){
+      case 'NotAllowedError': // permissão negada / bloqueada
+        m='Permissão do microfone negada. Toque no cadeado na barra de endereço → Microfone → Permitir, e tente de novo.';
+        break;
+      case 'NotFoundError':
+        m='Nenhum microfone encontrado neste aparelho.';
+        break;
+      case 'NotReadableError':
+        m='O microfone está em uso por outro app. Feche-o e tente de novo.';
+        break;
+      default:
+        m='Falha ao acessar o microfone ('+e.name+'). Abra no Chrome/Safari, fora do navegador interno de apps.';
+    }
+    els.msg.textContent=m;
     els.msg.classList.add('err');
+    if(audioCtx){ audioCtx.close(); audioCtx=null; }
   }
 }
 function stop(){
