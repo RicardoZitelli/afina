@@ -100,6 +100,15 @@
   .btn-ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
   button:disabled{opacity:.45;cursor:not-allowed}
 
+  .presets{display:flex;gap:8px}
+  .preset{
+    flex:1;background:var(--panel);color:var(--muted);border:1px solid var(--line);
+    border-radius:11px;padding:11px 6px;font-weight:600;font-size:13px;line-height:1.2;
+  }
+  .preset small{display:block;font-family:var(--mono);font-size:9px;font-weight:400;margin-top:3px;opacity:.7}
+  .preset.active{color:#0E1726;background:var(--gold);border-color:var(--gold)}
+  .preset.active small{opacity:.6}
+
   .opts{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:14px}
   .opt{display:flex;align-items:center;justify-content:space-between;gap:12px}
   .opt label{font-size:14px;color:var(--ink)}
@@ -153,6 +162,13 @@
     <button class="btn-ghost" id="hearBtn" disabled>Ouvir nota</button>
   </div>
 
+  <div class="presets" id="presets">
+    <button class="preset active" data-p="facil">Fácil<small>±70 · 250ms</small></button>
+    <button class="preset" data-p="medio">Médio<small>±45 · 400ms</small></button>
+    <button class="preset" data-p="dificil">Difícil<small>±25 · 600ms</small></button>
+    <button class="preset" data-p="mestre">Mestre<small>±15 · oitava</small></button>
+  </div>
+
   <div class="opts">
     <div class="opt">
       <label>Ignorar oitava<div class="hint">casa o tom em qualquer altura da sua voz</div></label>
@@ -186,7 +202,7 @@ const els = {
   liveNote:$('liveNote'), liveHz:$('liveHz'), liveCents:$('liveCents'),
   startBtn:$('startBtn'), hearBtn:$('hearBtn'), msg:$('msg'),
   ignoreOctave:$('ignoreOctave'), tol:$('tol'), tolVal:$('tolVal'),
-  hold:$('hold'), holdVal:$('holdVal')
+  hold:$('hold'), holdVal:$('holdVal'), presets:$('presets')
 };
 
 function midiToName(m){ const r=Math.round(m); return NOTES_PT[((r%12)+12)%12] + (Math.floor(r/12)-1); }
@@ -351,9 +367,36 @@ function stop(){
 
 els.startBtn.onclick=()=> running?stop():start();
 els.hearBtn.onclick=()=> beep(midiToFreq(SONG[idx]),0.18,0.7);
-els.tol.oninput=()=> els.tolVal.textContent='±'+els.tol.value+' cents';
-els.hold.oninput=()=> els.holdVal.textContent=els.hold.value+' ms no tom';
 
+// ---- Presets de dificuldade ----
+const PRESETS = {
+  facil:   {tol:70, hold:250, octave:true},
+  medio:   {tol:45, hold:400, octave:true},
+  dificil: {tol:25, hold:600, octave:true},
+  mestre:  {tol:15, hold:800, octave:false}
+};
+function syncLabels(){
+  els.tolVal.textContent='±'+els.tol.value+' cents';
+  els.holdVal.textContent=els.hold.value+' ms no tom';
+}
+function applyPreset(name){
+  const p=PRESETS[name]; if(!p) return;
+  els.tol.value=p.tol; els.hold.value=p.hold; els.ignoreOctave.checked=p.octave;
+  syncLabels();
+  [...els.presets.children].forEach(b=>b.classList.toggle('active', b.dataset.p===name));
+}
+function clearPresetHighlight(){
+  [...els.presets.children].forEach(b=>b.classList.remove('active'));
+}
+els.presets.querySelectorAll('.preset').forEach(b=>{
+  b.onclick=()=> applyPreset(b.dataset.p);
+});
+// mexeu manualmente -> vira "personalizado"
+els.tol.oninput=()=>{ els.tolVal.textContent='±'+els.tol.value+' cents'; clearPresetHighlight(); };
+els.hold.oninput=()=>{ els.holdVal.textContent=els.hold.value+' ms no tom'; clearPresetHighlight(); };
+els.ignoreOctave.onchange=clearPresetHighlight;
+
+applyPreset('facil');
 buildSyllables(); refreshTarget();
 </script>
 </body>
