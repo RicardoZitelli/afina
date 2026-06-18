@@ -322,6 +322,7 @@ function advance(){
 // tom de referência / sucesso
 function beep(freq,gain,dur){
   if(!audioCtx) return;
+  if(audioCtx.state==='suspended') audioCtx.resume(); // iOS: destrava o áudio no toque
   const o=audioCtx.createOscillator(), g=audioCtx.createGain();
   o.type='sine'; o.frequency.value=freq;
   g.gain.value=0; o.connect(g); g.connect(audioCtx.destination);
@@ -334,6 +335,7 @@ function beep(freq,gain,dur){
 async function start(){
   try{
     audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') await audioCtx.resume(); // iOS
     micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     const src=audioCtx.createMediaStreamSource(micStream);
     analyser=audioCtx.createAnalyser();
