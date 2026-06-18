@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Afina — protótipo de pitch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E1726;
+    --panel:#16203A;
+    --panel-2:#1D2A49;
+    --ink:#EAF0FF;
+    --muted:#7E8CB0;
+    --line:#2A3A60;
+    --gold:#FFC857;     /* afinado */
+    --cool:#5B8DEF;     /* desafinado */
+    --display:'Sora', ui-sans-serif, system-ui, sans-serif;
+    --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #1a2746 0%, var(--bg) 60%);
+    color:var(--ink);
+    font-family:var(--display);
+    -webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100%;padding:18px 16px 28px;gap:18px;
+  }
+  .wrap{width:100%;max-width:480px;display:flex;flex-direction:column;gap:16px}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  h1{font-size:19px;font-weight:800;letter-spacing:.3px;margin:0}
+  .tag{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+  /* Syllable progress */
+  .syllables{display:flex;gap:6px;flex-wrap:wrap}
+  .syl{
+    flex:1 1 0;min-width:34px;text-align:center;padding:8px 2px;border-radius:10px;
+    background:var(--panel);color:var(--muted);font-weight:600;font-size:14px;
+    border:1px solid var(--line);transition:all .25s ease;
+  }
+  .syl.current{color:var(--ink);border-color:var(--cool);box-shadow:0 0 0 1px var(--cool) inset}
+  .syl.done{color:#0E1726;background:var(--gold);border-color:var(--gold)}
+
+  /* Target card */
+  .target{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--line);border-radius:20px;padding:22px 20px 18px;
+    text-align:center;position:relative;overflow:hidden;
+  }
+  .target .label{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+  .target .note{font-size:64px;font-weight:800;line-height:1.05;margin:4px 0 2px}
+  .target .sub{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .target.locked{border-color:var(--gold)}
+  .target.locked::after{
+    content:"";position:absolute;inset:0;border-radius:20px;
+    box-shadow:0 0 60px 0 rgba(255,200,87,.35) inset;animation:pulse .5s ease;
+  }
+  @keyframes pulse{from{opacity:0}to{opacity:1}}
+
+  /* Pitch lane (signature element) */
+  .lane{
+    position:relative;height:86px;border-radius:16px;background:var(--panel);
+    border:1px solid var(--line);overflow:hidden;
+  }
+  .zone{
+    position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);
+    background:rgba(91,141,239,.10);border-left:1px dashed var(--line);border-right:1px dashed var(--line);
+    transition:background .2s ease,box-shadow .2s ease;
+  }
+  .zone.in{background:rgba(255,200,87,.16);box-shadow:0 0 30px rgba(255,200,87,.25)}
+  .center{position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--line)}
+  .dot{
+    position:absolute;top:50%;left:50%;width:18px;height:18px;border-radius:50%;
+    background:var(--cool);transform:translate(-50%,-50%);
+    box-shadow:0 0 18px var(--cool);transition:left .06s linear,background .15s,box-shadow .15s;
+  }
+  .dot.in{background:var(--gold);box-shadow:0 0 22px var(--gold)}
+  .lane .scale{position:absolute;bottom:5px;left:0;right:0;display:flex;justify-content:space-between;padding:0 10px;font-family:var(--mono);font-size:9px;color:var(--muted)}
+
+  /* Readout */
+  .readout{display:flex;gap:10px}
+  .stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .stat .k{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .stat .v{font-family:var(--mono);font-size:18px;font-weight:600;margin-top:2px}
+
+  /* Controls */
+  .row{display:flex;gap:10px;align-items:center}
+  button{
+    font-family:var(--display);font-weight:600;font-size:15px;border:none;border-radius:12px;
+    padding:13px 16px;cursor:pointer;transition:transform .08s ease,filter .15s ease;
+  }
+  button:active{transform:translateY(1px)}
+  .btn-primary{background:var(--gold);color:#0E1726;flex:1}
+  .btn-ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+
+  .opts{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:14px}
+  .opt{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .opt label{font-size:14px;color:var(--ink)}
+  .opt .hint{font-family:var(--mono);font-size:10px;color:var(--muted)}
+  input[type=range]{flex:1;accent-color:var(--gold)}
+  .switch{position:relative;width:46px;height:26px;flex:none}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:var(--line);border-radius:99px;transition:.2s;cursor:pointer}
+  .slider::before{content:"";position:absolute;height:20px;width:20px;left:3px;top:3px;background:var(--ink);border-radius:50%;transition:.2s}
+  .switch input:checked + .slider{background:var(--gold)}
+  .switch input:checked + .slider::before{transform:translateX(20px);background:#0E1726}
+
+  .msg{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;min-height:16px}
+  .msg.err{color:#FF9E9E}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;animation:none !important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Afina</h1>
+    <span class="tag">protótipo · pitch em tempo real</span>
+  </header>
+
+  <div class="syllables" id="syllables"></div>
+
+  <div class="target" id="targetCard">
+    <div class="label">cante esta nota</div>
+    <div class="note" id="targetNote">Dó</div>
+    <div class="sub" id="targetSub">— faça "hmmm" no tom —</div>
+  </div>
+
+  <div class="lane" id="lane">
+    <div class="zone" id="zone"></div>
+    <div class="center"></div>
+    <div class="dot" id="dot"></div>
+    <div class="scale"><span>♭ grave</span><span>no tom</span><span>agudo ♯</span></div>
+  </div>
+
+  <div class="readout">
+    <div class="stat"><div class="k">você</div><div class="v" id="liveNote">—</div></div>
+    <div class="stat"><div class="k">freq</div><div class="v" id="liveHz">— Hz</div></div>
+    <div class="stat"><div class="k">desvio</div><div class="v" id="liveCents">—</div></div>
+  </div>
+
+  <div class="row">
+    <button class="btn-primary" id="startBtn">Ligar microfone</button>
+    <button class="btn-ghost" id="hearBtn" disabled>Ouvir nota</button>
+  </div>
+
+  <div class="opts">
+    <div class="opt">
+      <label>Ignorar oitava<div class="hint">casa o tom em qualquer altura da sua voz</div></label>
+      <span class="switch"><input type="checkbox" id="ignoreOctave" checked><span class="slider"></span></span>
+    </div>
+    <div class="opt">
+      <label>Tolerância <span class="hint" id="tolVal">±45 cents</span></label>
+      <input type="range" id="tol" min="20" max="120" step="5" value="45">
+    </div>
+    <div class="opt">
+      <label>Firmeza <span class="hint" id="holdVal">350 ms no tom</span></label>
+      <input type="range" id="hold" min="150" max="800" step="50" value="350">
+    </div>
+  </div>
+
+  <div class="msg" id="msg">Toque em “Ligar microfone” e permita o acesso.</div>
+</div>
+
+<script>
+const NOTES_PT = ['Dó','Dó#','Ré','Ré#','Mi','Fá','Fá#','Sol','Sol#','Lá','Lá#','Si'];
+// Melodia alvo: escala de Dó maior (MIDI 60..72)
+const SONG = [60,62,64,65,67,69,71,72];
+
+let audioCtx=null, analyser=null, micStream=null, buf=null, rafId=null, running=false;
+let idx=0, holdMs=0, lastT=0;
+
+const $ = id => document.getElementById(id);
+const els = {
+  syllables:$('syllables'), targetNote:$('targetNote'), targetSub:$('targetSub'),
+  targetCard:$('targetCard'), zone:$('zone'), dot:$('dot'),
+  liveNote:$('liveNote'), liveHz:$('liveHz'), liveCents:$('liveCents'),
+  startBtn:$('startBtn'), hearBtn:$('hearBtn'), msg:$('msg'),
+  ignoreOctave:$('ignoreOctave'), tol:$('tol'), tolVal:$('tolVal'),
+  hold:$('hold'), holdVal:$('holdVal')
+};
+
+function midiToName(m){ const r=Math.round(m); return NOTES_PT[((r%12)+12)%12] + (Math.floor(r/12)-1); }
+function freqToMidi(f){ return 69 + 12*Math.log2(f/440); }
+function midiToFreq(m){ return 440*Math.pow(2,(m-69)/12); }
+
+function buildSyllables(){
+  els.syllables.innerHTML='';
+  SONG.forEach((m,i)=>{
+    const d=document.createElement('div');
+    d.className='syl'+(i===0?' current':'');
+    d.textContent=NOTES_PT[((m%12)+12)%12];
+    d.dataset.i=i;
+    els.syllables.appendChild(d);
+  });
+}
+function refreshTarget(){
+  const m=SONG[idx];
+  els.targetNote.textContent = midiToName(m).replace(/[0-9]/g,'');
+  els.targetSub.textContent = `${midiToName(m)} · ${midiToFreq(m).toFixed(1)} Hz`;
+  [...els.syllables.children].forEach((c,i)=>{
+    c.classList.toggle('current',i===idx);
+    c.classList.toggle('done',i<idx);
+  });
+}
+
+// ---- Pitch detection: autocorrelação (ACF2+) ----
+function autoCorrelate(b, sr){
+  let SIZE=b.length, rms=0;
+  for(let i=0;i<SIZE;i++){ const v=b[i]; rms+=v*v; }
+  rms=Math.sqrt(rms/SIZE);
+  if(rms<0.01) return -1; // silêncio
+
+  let r1=0, r2=SIZE-1, thr=0.2;
+  for(let i=0;i<SIZE/2;i++) if(Math.abs(b[i])<thr){ r1=i; break; }
+  for(let i=1;i<SIZE/2;i++) if(Math.abs(b[SIZE-i])<thr){ r2=SIZE-i; break; }
+  b=b.slice(r1,r2); SIZE=b.length;
+
+  const c=new Float32Array(SIZE);
+  for(let i=0;i<SIZE;i++) for(let j=0;j<SIZE-i;j++) c[i]+=b[j]*b[j+i];
+
+  let d=0; while(c[d]>c[d+1]) d++;
+  let maxv=-1, maxp=-1;
+  for(let i=d;i<SIZE;i++){ if(c[i]>maxv){ maxv=c[i]; maxp=i; } }
+  let T0=maxp;
+  const x1=c[T0-1], x2=c[T0], x3=c[T0+1];
+  const a=(x1+x3-2*x2)/2, bb=(x3-x1)/2;
+  if(a) T0=T0-bb/(2*a);
+  return sr/T0;
+}
+
+function loop(){
+  rafId=requestAnimationFrame(loop);
+  analyser.getFloatTimeDomainData(buf);
+  const freq=autoCorrelate(buf, audioCtx.sampleRate);
+
+  const now=performance.now();
+  const dt=lastT?now-lastT:0; lastT=now;
+
+  if(freq<0 || freq<60 || freq>1200){ // sem voz válida
+    els.liveNote.textContent='—'; els.liveHz.textContent='— Hz'; els.liveCents.textContent='—';
+    els.dot.style.left='50%'; els.dot.classList.remove('in'); els.zone.classList.remove('in');
+    holdMs=Math.max(0, holdMs-dt*0.5);
+    return;
+  }
+
+  const midi=freqToMidi(freq);
+  els.liveNote.textContent=midiToName(midi);
+  els.liveHz.textContent=freq.toFixed(1)+' Hz';
+
+  const target=SONG[idx];
+  const tol=+els.tol.value;
+  const needHold=+els.hold.value;
+
+  // alvo considerando (ou não) a oitava
+  let targetMidi=target;
+  if(els.ignoreOctave.checked){
+    const tpc=((target%12)+12)%12;
+    targetMidi=Math.round((midi - tpc)/12)*12 + tpc;
+  }
+  const cents=(midi-targetMidi)*100;
+  els.liveCents.textContent=(cents>=0?'+':'')+cents.toFixed(0)+'¢';
+
+  // dot na lane: ±100¢ mapeado em 50%..-50% da largura
+  const clamped=Math.max(-100,Math.min(100,cents));
+  els.dot.style.left=(50 + clamped/100*45)+'%';
+
+  // largura da zona afinada
+  els.zone.style.width=(tol/100*90)+'%';
+
+  const inTune=Math.abs(cents)<=tol;
+  els.dot.classList.toggle('in',inTune);
+  els.zone.classList.toggle('in',inTune);
+
+  if(inTune){ holdMs+=dt; } else { holdMs=Math.max(0,holdMs-dt*1.5); }
+
+  if(holdMs>=needHold){
+    advance();
+    holdMs=0;
+  }
+}
+
+function advance(){
+  els.targetCard.classList.add('locked');
+  beep(midiToFreq(SONG[idx]),0.12,0.18);
+  setTimeout(()=>els.targetCard.classList.remove('locked'),500);
+  idx++;
+  if(idx>=SONG.length){
+    els.msg.textContent='🎉 Você completou a melodia! Recomeçando…';
+    [...els.syllables.children].forEach(c=>c.classList.add('done'));
+    setTimeout(()=>{ idx=0; refreshTarget(); els.msg.textContent='De novo! Cante o Dó.'; },1400);
+    return;
+  }
+  refreshTarget();
+}
+
+// tom de referência / sucesso
+function beep(freq,gain,dur){
+  if(!audioCtx) return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='sine'; o.frequency.value=freq;
+  g.gain.value=0; o.connect(g); g.connect(audioCtx.destination);
+  const t=audioCtx.currentTime;
+  g.gain.linearRampToValueAtTime(gain,t+0.02);
+  g.gain.linearRampToValueAtTime(0,t+dur);
+  o.start(t); o.stop(t+dur+0.02);
+}
+
+async function start(){
+  try{
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    const src=audioCtx.createMediaStreamSource(micStream);
+    analyser=audioCtx.createAnalyser();
+    analyser.fftSize=2048;
+    buf=new Float32Array(analyser.fftSize);
+    src.connect(analyser);
+    running=true;
+    els.startBtn.textContent='Desligar';
+    els.hearBtn.disabled=false;
+    els.msg.textContent='Cantando "hmmm" no tom da nota — segure até travar.';
+    els.msg.classList.remove('err');
+    lastT=0; holdMs=0;
+    loop();
+  }catch(e){
+    els.msg.textContent='Não consegui acessar o microfone aqui. Abra o arquivo direto no navegador (Chrome/Safari) e permita o mic.';
+    els.msg.classList.add('err');
+  }
+}
+function stop(){
+  running=false;
+  if(rafId) cancelAnimationFrame(rafId);
+  if(micStream) micStream.getTracks().forEach(t=>t.stop());
+  if(audioCtx) audioCtx.close();
+  audioCtx=null;
+  els.startBtn.textContent='Ligar microfone';
+  els.hearBtn.disabled=true;
+  els.dot.style.left='50%'; els.dot.classList.remove('in'); els.zone.classList.remove('in');
+  els.liveNote.textContent='—'; els.liveHz.textContent='— Hz'; els.liveCents.textContent='—';
+  els.msg.textContent='Microfone desligado.';
+}
+
+els.startBtn.onclick=()=> running?stop():start();
+els.hearBtn.onclick=()=> beep(midiToFreq(SONG[idx]),0.18,0.7);
+els.tol.oninput=()=> els.tolVal.textContent='±'+els.tol.value+' cents';
+els.hold.oninput=()=> els.holdVal.textContent=els.hold.value+' ms no tom';
+
+buildSyllables(); refreshTarget();
+</script>
+</body>
+</html>
